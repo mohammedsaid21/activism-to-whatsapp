@@ -68,116 +68,143 @@ export default function App() {
         <p className="tagline">Turn action pages into shareable messages</p>
       </header>
 
-      <div className="tabs" role="tablist">
-        <button
-          role="tab"
-          aria-selected={mode === 'url'}
-          className={`tab ${mode === 'url' ? 'active' : ''}`}
-          onClick={() => setMode('url')}
-        >
-          URL Mode
-        </button>
-        <button
-          role="tab"
-          aria-selected={mode === 'paste'}
-          className={`tab ${mode === 'paste' ? 'active' : ''}`}
-          onClick={() => setMode('paste')}
-        >
-          Paste Content
-        </button>
-      </div>
-
-      {mode === 'url' ? (
-        <section className="panel">
-          <label className="label">Paste an action page link</label>
-          <textarea
-            className="textarea"
-            rows={4}
-            placeholder="https://actionnetwork.org/letters/..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            disabled={loading}
-          />
-          <p className="hint">
-            One link at a time. If a site blocks access, switch to the Paste tab.
-          </p>
-        </section>
-      ) : (
-        <section className="panel">
-          <label className="label">Paste the page content here</label>
-          <textarea
-            className="textarea"
-            rows={10}
-            placeholder="Open the page in your browser, select all (Ctrl+A), copy, and paste here."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            disabled={loading}
-          />
-          <p className="hint">Use this when a site shows bot protection.</p>
-        </section>
-      )}
-
-      <details className="settings">
-        <summary>Footer text</summary>
-        <textarea
-          className="textarea footer-input"
-          rows={2}
-          value={footer}
-          onChange={(e) => setFooter(e.target.value)}
-          disabled={loading}
-        />
-        <p className="hint">Appended to every message. Saved in your browser.</p>
-      </details>
-
-      <div className="actions">
-        <button
-          className="btn btn-primary"
-          onClick={handleConvert}
-          disabled={loading || !input.trim()}
-        >
-          {loading ? 'Converting…' : 'Convert'}
-        </button>
-        <button
-          className="btn btn-ghost"
-          onClick={handleClear}
-          disabled={loading}
-        >
-          Clear
-        </button>
-      </div>
-
-      {error && (
-        <div className="alert alert-error">
-          <pre>{error}</pre>
-        </div>
-      )}
-
-      {result && (
-        <section className="result">
-          <div className="result-head">
-            <span>Preview</span>
-            <span className={`charcount ${overLimit ? 'over' : ''}`}>
-              {charCount} / 768
-            </span>
+      <div className="workspace">
+        <div className="composer">
+          <div className="tabs" role="tablist">
+            <button
+              role="tab"
+              aria-selected={mode === 'url'}
+              className={`tab ${mode === 'url' ? 'active' : ''}`}
+              onClick={() => setMode('url')}
+            >
+              URL Mode
+            </button>
+            <button
+              role="tab"
+              aria-selected={mode === 'paste'}
+              className={`tab ${mode === 'paste' ? 'active' : ''}`}
+              onClick={() => setMode('paste')}
+            >
+              Paste Content
+            </button>
           </div>
 
-          <div className="phone">
-            <div className="phone-bar">WhatsApp</div>
-            <div className="phone-body">
-              <Bubble message={result.message} />
-            </div>
-          </div>
+          {mode === 'url' ? (
+            <section className="panel">
+              <label className="label">Paste an action page link</label>
+              <textarea
+                className="textarea"
+                rows={4}
+                placeholder="https://actionnetwork.org/letters/..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                disabled={loading}
+              />
+              <p className="hint">
+                One link at a time. If a site blocks access, switch to the Paste tab.
+              </p>
+            </section>
+          ) : (
+            <section className="panel">
+              <label className="label">Paste the page content here</label>
+              <textarea
+                className="textarea"
+                rows={10}
+                placeholder="Open the page in your browser, select all (Ctrl+A), copy, and paste here."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                disabled={loading}
+              />
+              <p className="hint">Use this when a site shows bot protection.</p>
+            </section>
+          )}
 
-          <button className="btn btn-primary copy-btn" onClick={handleCopy}>
-            Copy message
-          </button>
-
-          <details className="raw">
-            <summary>View raw text</summary>
-            <pre>{result.message}</pre>
+          <details className="settings">
+            <summary>Footer text</summary>
+            <textarea
+              className="textarea footer-input"
+              rows={2}
+              value={footer}
+              onChange={(e) => setFooter(e.target.value)}
+              disabled={loading}
+            />
+            <p className="hint">Appended to every message. Saved in your browser.</p>
           </details>
-        </section>
-      )}
+
+          <div className="actions">
+            <button
+              className="btn btn-primary"
+              onClick={handleConvert}
+              disabled={loading || !input.trim()}
+            >
+              {loading ? 'Converting…' : 'Convert'}
+            </button>
+            <button
+              className="btn btn-ghost"
+              onClick={handleClear}
+              disabled={loading}
+            >
+              Clear
+            </button>
+          </div>
+
+          {error && (
+            <div className="alert alert-error">
+              <pre>{error}</pre>
+            </div>
+          )}
+        </div>
+
+        <div className="preview">
+          {result ? (
+            <section className="result">
+              <div className="result-head">
+                <span>Preview</span>
+                <span className={`charcount ${overLimit ? 'over' : ''}`}>
+                  {charCount} / 768
+                </span>
+              </div>
+
+              <div className="phone">
+                <div className="phone-bar">WhatsApp</div>
+                <div className="phone-body">
+                  <Bubble message={result.message} />
+                </div>
+              </div>
+
+              <button className="btn btn-primary copy-btn" onClick={handleCopy}>
+                Copy message
+              </button>
+
+              <details className="raw">
+                <summary>View raw text</summary>
+                <pre>{result.message}</pre>
+              </details>
+            </section>
+          ) : (
+            <EmptyState />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="empty">
+      <div className="phone phone-muted">
+        <div className="phone-bar">WhatsApp</div>
+        <div className="phone-body">
+          <div className="bubble bubble-ghost">
+            <p>Your WhatsApp message will appear here.</p>
+            <span className="bubble-time">now</span>
+          </div>
+        </div>
+      </div>
+      <p className="empty-hint">
+        Paste a link or text, then hit <strong>Convert</strong>.
+      </p>
     </div>
   );
 }

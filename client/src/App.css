@@ -71,9 +71,20 @@ body {
 
 /* ---------- Layout ---------- */
 .app {
-  max-width: 560px;
+  max-width: 600px;
   margin: 0 auto;
-  padding: 56px 20px 96px;
+  padding: 48px 18px 88px;
+}
+
+.workspace {
+  display: grid;
+  gap: 22px;
+  align-items: start;
+}
+
+.composer,
+.preview {
+  min-width: 0;
 }
 
 /* ---------- Header ---------- */
@@ -529,13 +540,60 @@ body {
 }
 
 /* ---------- Responsive ---------- */
+/* ---------- Empty state (preview before first convert) ---------- */
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.phone-muted {
+  opacity: 0.82;
+}
+
+.bubble.bubble-ghost {
+  background: #e6eae5;
+  color: var(--ink-3);
+  box-shadow: none;
+}
+
+.bubble.bubble-ghost::before {
+  background: #e6eae5;
+}
+
+.bubble.bubble-ghost .bubble-time {
+  color: #aab2ac;
+}
+
+.bubble.bubble-ghost .bubble-time::before {
+  content: '';
+  margin: 0;
+}
+
+.empty-hint {
+  margin: 0;
+  text-align: center;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+.empty-hint strong {
+  color: var(--ink-2);
+}
+
+/* ---------- Responsive ---------- */
 @media (max-width: 520px) {
   .app {
-    padding: 36px 16px 72px;
+    padding: 34px 15px 70px;
   }
 
   .app-header {
-    margin-bottom: 24px;
+    margin-bottom: 22px;
+  }
+
+  .app-header h1 {
+    font-size: 1.9rem;
   }
 
   .panel,
@@ -549,5 +607,26 @@ body {
 
   .actions .btn {
     width: 100%;
+  }
+}
+
+@media (min-width: 900px) {
+  .app {
+    max-width: 980px;
+    padding: 64px 32px 96px;
+  }
+
+  .app-header {
+    margin-bottom: 36px;
+  }
+
+  .workspace {
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 40px;
+  }
+
+  .preview {
+    position: sticky;
+    top: 24px;
   }
 }
