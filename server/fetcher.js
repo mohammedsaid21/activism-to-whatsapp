@@ -20,7 +20,82 @@ export class FetchError extends Error {
   }
 }
 
+/**
+ * Fetch page content for URL mode.
+ * Tries a reader proxy first (handles JS-rendered pages + many bot walls),
+ * then falls back to a direct HTML scrape.
+ */
 export async function fetchUrl(url) {
+  let readerText = null;
+  let directText = null;
+  let lastError = null;
+
+  try {
+    readerText = await fetchViaReader(url);
+  } catch (err) {
+    lastError = err;
+  }
+
+  try {
+    directText = await fetchDirect(url);
+  } catch (err) {
+    lastError = err;
+  }
+
+  const best = pickRicher(readerText, directText);
+  if (best) return best;
+
+  if (lastError instanceof FetchError) throw lastError;
+  throw new FetchError(
+    'The site blocked automatic access (bot protection).',
+    { kind: 'bot_protected' }
+  );
+}
+
+async function fetchViaReader(url) {
+  const endpoint = `https://r.jina.ai/${url}`;
+  let res;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25000);
+    // Minimal headers — a full browser UA can trigger Cloudflare on the reader
+    res = await fetch(endpoint, {
+      headers: { Accept: 'text/plain' },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+  } catch (err) {
+    throw new FetchError(`Reader could not reach the page: ${err.message}`, {
+      kind: 'network',
+    });
+  }
+
+  if (!res.ok) {
+    throw new FetchError(`Reader returned status ${res.status}`, {
+      kind: res.status === 403 || res.status === 429 ? 'bot_protected' : 'http_error',
+      status: res.status,
+    });
+  }
+
+  const text = (await res.text()).trim();
+  if (!text || text.length < 40) {
+    throw new FetchError('Reader returned empty content.', { kind: 'fetch_failed' });
+  }
+  if (/just a moment|cf-browser-verification|attention required/i.test(text)) {
+    throw new FetchError('Reader hit a bot wall.', { kind: 'bot_protected' });
+  }
+
+  // Strip noisy image markdown lines; keep the story
+  const cleaned = text
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+    .slice(0, 12000);
+
+  return [`SOURCE: ${url}`, '', cleaned].join('\n');
+}
+
+async function fetchDirect(url) {
   let res;
   try {
     const controller = new AbortController();
@@ -58,7 +133,28 @@ export async function fetchUrl(url) {
   }
 
   const text = await readBounded(res, MAX_BYTES);
+  if (/just a moment|cf-browser-verification|attention required/i.test(text)) {
+    throw new FetchError(
+      'The site blocked automatic access (bot protection).',
+      { kind: 'bot_protected', status: res.status }
+    );
+  }
   return extractText(text, url);
+}
+
+function pickRicher(reader, direct) {
+  if (!reader && !direct) return null;
+  // Prefer the reader when it captured real prose — cleaner than SPA nav shells
+  if (reader && score(reader) >= 60) return reader;
+  if (direct && score(direct) >= 40) return direct;
+  return reader || direct;
+}
+
+function score(text) {
+  const body = text.replace(/^TITLE:.*$/m, '').replace(/^SOURCE:.*$/m, '').trim();
+  const words = body.match(/[A-Za-z\u0600-\u06FF]{3,}/g) || [];
+  const sentences = body.split(/[.!?؟]\s+/).filter((s) => s.length > 40);
+  return words.length + sentences.length * 20;
 }
 
 async function readBounded(res, maxBytes) {
@@ -80,34 +176,26 @@ async function readBounded(res, maxBytes) {
 function extractText(html, url) {
   let body = html;
 
-  // Strip non-content blocks before extracting text
   body = body.replace(/<script[\s\S]*?<\/script>/gi, ' ');
   body = body.replace(/<style[\s\S]*?<\/style>/gi, ' ');
   body = body.replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ');
   body = body.replace(/<svg[\s\S]*?<\/svg>/gi, ' ');
   body = body.replace(/<!--[\s\S]*?-->/g, ' ');
 
-  // Pull <title> for context
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   const title = titleMatch ? decodeEntities(titleMatch[1]).trim() : '';
 
-  // Prefer <main>, <article>, or role=main if present
   const mainMatch =
     body.match(/<main[\s\S]*?<\/main>/i) ||
     body.match(/<article[\s\S]*?<\/article>/i);
   if (mainMatch) body = mainMatch[0];
 
-  // Convert block elements to newlines so paragraphs survive
   body = body.replace(/<\/(p|div|section|li|h[1-6]|br|tr)>/gi, '\n');
   body = body.replace(/<br\s*\/?>/gi, '\n');
   body = body.replace(/<li[^>]*>/gi, '• ');
-
-  // Strip all remaining tags
   body = body.replace(/<[^>]+>/g, ' ');
-
   body = decodeEntities(body);
 
-  // Collapse whitespace
   body = body
     .split('\n')
     .map((l) => l.replace(/[ \t]+/g, ' ').trim())
@@ -116,7 +204,6 @@ function extractText(html, url) {
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 
-  // Drop common boilerplate lines
   body = body.replace(/^(Share|Tweet|Email|Print|Copy link)\s*$/gim, '');
 
   const out = [];

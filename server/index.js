@@ -66,7 +66,7 @@ app.post('/api/convert', async (req, res) => {
           error: err.message,
           kind: err.kind,
           hint: showPasteHint
-            ? 'Open the page in your browser, copy the text, and use the Paste tab instead.'
+            ? 'Still blocked — open the page, copy the text, and use the Paste tab.'
             : null,
         });
       }

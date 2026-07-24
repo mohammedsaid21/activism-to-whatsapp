@@ -211,7 +211,7 @@ export default function App() {
                 disabled={loading}
               />
               <p className="hint">
-                One link at a time. If a site blocks access, switch to Paste.
+                One link at a time. We auto-read most blocked/JS pages; if it fails, use Paste.
               </p>
             </section>
           ) : (
