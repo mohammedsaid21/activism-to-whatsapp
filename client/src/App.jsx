@@ -14,6 +14,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [exportNote, setExportNote] = useState('');
 
   useEffect(() => {
     localStorage.setItem(LS_FOOTER, footer);
@@ -25,6 +26,7 @@ export default function App() {
   async function handleConvert() {
     setError(null);
     setResult(null);
+    setExportNote('');
     if (!input.trim()) {
       setError('Please paste a link or some text first.');
       return;
@@ -54,11 +56,70 @@ export default function App() {
     setInput('');
     setResult(null);
     setError(null);
+    setExportNote('');
+  }
+
+  function flashNote(text) {
+    setExportNote(text);
+    window.clearTimeout(flashNote._t);
+    flashNote._t = window.setTimeout(() => setExportNote(''), 2000);
   }
 
   async function handleCopy() {
     if (!result?.message) return;
     await navigator.clipboard.writeText(result.message);
+    flashNote('Copied formatted text');
+  }
+
+  function downloadBlob(filename, blob) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleDownloadTxt() {
+    if (!result?.message) return;
+    downloadBlob(
+      'whatsapp-message.txt',
+      new Blob([result.message], { type: 'text/plain;charset=utf-8' })
+    );
+    flashNote('Downloaded TXT');
+  }
+
+  function handleDownloadDoc() {
+    if (!result?.message) return;
+    const escaped = result.message
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>WhatsApp Message</title></head><body><pre style="font-family:Segoe UI,Arial,sans-serif;white-space:pre-wrap;font-size:14px;">${escaped}</pre></body></html>`;
+    downloadBlob(
+      'whatsapp-message.doc',
+      new Blob(['\ufeff', html], { type: 'application/msword' })
+    );
+    flashNote('Downloaded DOC');
+  }
+
+  async function handleShare() {
+    if (!result?.message) return;
+    if (navigator.share) {
+      try {
+        await navigator.share({ text: result.message });
+        flashNote('Shared');
+        return;
+      } catch (err) {
+        if (err?.name === 'AbortError') return;
+      }
+    }
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(result.message)}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
+    flashNote('Opened WhatsApp share');
   }
 
   return (
@@ -172,9 +233,24 @@ export default function App() {
                 </div>
               </div>
 
-              <button className="btn btn-primary copy-btn" onClick={handleCopy}>
-                Copy message
-              </button>
+              <div className="export">
+                <p className="export-label">Copy + Export</p>
+                <div className="export-grid">
+                  <button className="btn btn-primary" onClick={handleCopy}>
+                    Copy formatted text
+                  </button>
+                  <button className="btn btn-secondary" onClick={handleDownloadTxt}>
+                    Download TXT
+                  </button>
+                  <button className="btn btn-secondary" onClick={handleDownloadDoc}>
+                    Download DOC
+                  </button>
+                  <button className="btn btn-secondary" onClick={handleShare}>
+                    Share
+                  </button>
+                </div>
+                {exportNote && <p className="export-note">{exportNote}</p>}
+              </div>
 
               <details className="raw">
                 <summary>View raw text</summary>

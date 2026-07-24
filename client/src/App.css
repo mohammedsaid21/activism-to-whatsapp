@@ -326,6 +326,61 @@ body {
   width: 100%;
 }
 
+.btn-secondary {
+  background: var(--surface);
+  color: var(--ink-2);
+  border-color: var(--line);
+}
+
+.btn-secondary:not(:disabled):hover {
+  background: var(--surface-2);
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.btn-secondary:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+/* ---------- Copy + Export ---------- */
+.export {
+  margin-top: 2px;
+}
+
+.export-label {
+  margin: 0 0 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.export-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.export-grid .btn {
+  min-height: 44px;
+  padding: 11px 12px;
+  font-size: 0.84rem;
+  width: 100%;
+}
+
+.export-grid .btn-primary {
+  grid-column: 1 / -1;
+}
+
+.export-note {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--brand);
+}
+
 /* ---------- Alerts ---------- */
 .alert {
   border-radius: var(--r-md);
