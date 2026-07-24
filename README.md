@@ -1,6 +1,6 @@
 # Activism → WhatsApp
 
-Convert activism pages (petitions, action alerts, news) into short, shareable WhatsApp messages.
+Convert activism pages into short, shareable WhatsApp messages.
 
 One Node process serves **both** the React frontend and the Express API.
 
@@ -20,49 +20,62 @@ Browser  →  Express (PORT)
               └── /*         → client/dist (built React app)
 ```
 
-In development, Vite runs separately and proxies `/api` to Express.
-In production, Express serves the built frontend itself — one URL, one deploy.
+## Deploy (Fly.io — recommended)
 
-## Deploy to GitHub + Render
+Front and back ship together via Docker. Free allowance is separate from Render.
 
-### 1. Code is on GitHub
+### One-time
 
-This repo is the source of truth. Never commit `.env` (API keys stay in the host dashboard).
+1. Create a free account: [https://fly.io/app/sign-up](https://fly.io/app/sign-up)
+2. Install the CLI and log in:
 
-### 2. Deploy on Render (front + back together)
+```bash
+curl -L https://fly.io/install.sh | sh
+fly auth login
+```
 
-1. Go to [https://dashboard.render.com](https://dashboard.render.com) → **New** → **Blueprint**
-2. Connect this GitHub repo
-3. Render reads [`render.yaml`](render.yaml) and creates one **Web Service**
-4. Set these secret env vars in the Render dashboard (marked `sync: false` in the blueprint):
-   - `ZAI_API_KEY` — your z.ai key
-   - `FOOTER_TEXT` — (optional) AmpNet footer line
-5. Deploy — you get a URL like `https://activism-to-whatsapp.onrender.com`
+### Deploy this app
 
-Render free tier sleeps after idle; the first request after sleep can take ~30–60s.
+From the project root:
 
-### Manual Render (without Blueprint)
+```bash
+fly launch --no-deploy          # uses fly.toml already in the repo
+fly secrets set ZAI_API_KEY="your_key_here"
+fly secrets set ZAI_BASE_URL="https://api.z.ai/api/coding/paas/v4"
+fly secrets set GLM_MODEL="glm-5.2"
+fly secrets set FOOTER_TEXT="Join AmpNet, a community fighting for truth & justice online: chat.whatsapp.com/JkcyqcS0DYFLutqL4nyb0V"
+fly deploy
+```
 
-- **Build:** `npm install && npm run build`
-- **Start:** `npm start`
-- **Env:** `NODE_ENV=production`, `ZAI_API_KEY`, `ZAI_BASE_URL`, `GLM_MODEL`
+Your live URL will be: `https://activism-to-whatsapp.fly.dev`
+
+Later updates: just `fly deploy` again after pushing code.
+
+### Alternative: Railway (GitHub UI, no CLI)
+
+1. [https://railway.app](https://railway.app) → **New Project** → **Deploy from GitHub**
+2. Select `activism-to-whatsapp`
+3. Railway detects the Dockerfile automatically
+4. Add variables: `ZAI_API_KEY`, `ZAI_BASE_URL`, `GLM_MODEL`, `NODE_ENV=production`
+5. Generate a public domain under **Settings → Networking**
 
 ## Config
 
-| Variable       | Default                                      | Description        |
-| -------------- | -------------------------------------------- | ------------------ |
-| `ZAI_API_KEY`  | (required)                                   | z.ai API key       |
-| `ZAI_BASE_URL` | `https://api.z.ai/api/coding/paas/v4`        | GLM endpoint       |
-| `GLM_MODEL`    | `glm-5.2`                                    | Model name         |
-| `FOOTER_TEXT`  | AmpNet WhatsApp invite                       | Default footer     |
-| `PORT`         | `3001` locally / set by host in production   | Server port        |
-| `NODE_ENV`     | unset locally / `production` on host         | Serves `client/dist` when `production` |
+| Variable       | Required | Description                          |
+| -------------- | -------- | ------------------------------------ |
+| `ZAI_API_KEY`  | yes      | z.ai API key                         |
+| `ZAI_BASE_URL` | no       | default `https://api.z.ai/api/coding/paas/v4` |
+| `GLM_MODEL`    | no       | default `glm-5.2`                    |
+| `FOOTER_TEXT`  | no       | AmpNet footer line                   |
+| `PORT`         | no       | host sets this (Fly uses `8080`)     |
+| `NODE_ENV`     | no       | `production` in Docker image         |
 
 ## Project layout
 
 ```
-server/          Express API + GLM call + static file serving
+server/          Express API + GLM + static file serving
 client/          Vite + React UI
-render.yaml      One-click Render deploy (front + back)
-.env.example     Env template (no secrets)
+Dockerfile       Production image (front build + back)
+fly.toml         Fly.io config
+.env.example     Env template (never commit real secrets)
 ```
