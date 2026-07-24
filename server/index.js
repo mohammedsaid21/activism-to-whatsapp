@@ -76,6 +76,15 @@ app.post('/api/convert', async (req, res) => {
     content = input.trim();
   }
 
+  // Skip AI when there's not enough substance to build an alert
+  const substance = content.replace(/\s+/g, ' ').trim();
+  if (substance.length < 50) {
+    return res.status(400).json({
+      error: 'Too short — paste the full campaign, petition, or article.',
+      kind: 'too_short',
+    });
+  }
+
   try {
     const message = await generateMessage({ content, sourceUrl, footer });
     res.json({ message });

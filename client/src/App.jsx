@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const DEFAULT_FOOTER =
   'Join AmpNet, a community fighting for truth & justice online: chat.whatsapp.com/JkcyqcS0DYFLutqL4nyb0V';
 
 const LS_FOOTER = 'a2w_footer';
+const MIN_CONTENT = 50;
+const TOO_SHORT =
+  'Too short — paste the full campaign, petition, or article.';
 
 export default function App() {
   const [mode, setMode] = useState('url');
@@ -15,22 +18,64 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [exportNote, setExportNote] = useState('');
+  const errorRef = useRef(null);
+  const noteTimer = useRef(0);
 
   useEffect(() => {
     localStorage.setItem(LS_FOOTER, footer);
   }, [footer]);
 
+  useEffect(() => {
+    if (error && errorRef.current) {
+      errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [error]);
+
   const charCount = useMemo(() => result?.message?.length ?? 0, [result]);
   const overLimit = charCount > 768;
+  const pasteLength = input.trim().length;
+  const pasteTooShort = mode === 'paste' && pasteLength > 0 && pasteLength < MIN_CONTENT;
+  const canConvert =
+    !loading &&
+    input.trim().length > 0 &&
+    !(mode === 'paste' && pasteLength < MIN_CONTENT);
+
+  function setModeSafe(next) {
+    setMode(next);
+    setError(null);
+  }
+
+  function onInputChange(value) {
+    setInput(value);
+    if (error) setError(null);
+  }
+
+  function validateBeforeSend() {
+    const trimmed = input.trim();
+    if (!trimmed) {
+      setError('Paste a link or some text first.');
+      return false;
+    }
+    if (mode === 'url') {
+      if (!/^https?:\/\/\S+/i.test(trimmed.split('\n')[0].trim())) {
+        setError('Enter a valid link starting with https://');
+        return false;
+      }
+      return true;
+    }
+    if (trimmed.length < MIN_CONTENT) {
+      setError(TOO_SHORT);
+      return false;
+    }
+    return true;
+  }
 
   async function handleConvert() {
-    setError(null);
     setResult(null);
     setExportNote('');
-    if (!input.trim()) {
-      setError('Please paste a link or some text first.');
-      return;
-    }
+    setError(null);
+    if (!validateBeforeSend()) return;
+
     setLoading(true);
     try {
       const resp = await fetch('/api/convert', {
@@ -40,13 +85,12 @@ export default function App() {
       });
       const data = await resp.json();
       if (!resp.ok) {
-        const parts = [data.error, data.hint, data.detail].filter(Boolean);
-        setError(parts.join('\n\n'));
+        setError(data.error || 'Something went wrong. Try again.');
       } else {
         setResult(data);
       }
-    } catch (err) {
-      setError(`Could not reach the server. Is it running?\n\n${err.message}`);
+    } catch {
+      setError('Could not reach the server. Is it running?');
     } finally {
       setLoading(false);
     }
@@ -61,14 +105,14 @@ export default function App() {
 
   function flashNote(text) {
     setExportNote(text);
-    window.clearTimeout(flashNote._t);
-    flashNote._t = window.setTimeout(() => setExportNote(''), 2000);
+    window.clearTimeout(noteTimer.current);
+    noteTimer.current = window.setTimeout(() => setExportNote(''), 2000);
   }
 
   async function handleCopy() {
     if (!result?.message) return;
     await navigator.clipboard.writeText(result.message);
-    flashNote('Copied formatted text');
+    flashNote('Copied');
   }
 
   function downloadBlob(filename, blob) {
@@ -86,7 +130,7 @@ export default function App() {
       'whatsapp-message.txt',
       new Blob([result.message], { type: 'text/plain;charset=utf-8' })
     );
-    flashNote('Downloaded TXT');
+    flashNote('TXT downloaded');
   }
 
   function handleDownloadDoc() {
@@ -100,7 +144,7 @@ export default function App() {
       'whatsapp-message.doc',
       new Blob(['\ufeff', html], { type: 'application/msword' })
     );
-    flashNote('Downloaded DOC');
+    flashNote('DOC downloaded');
   }
 
   async function handleShare() {
@@ -119,7 +163,7 @@ export default function App() {
       '_blank',
       'noopener,noreferrer'
     );
-    flashNote('Opened WhatsApp share');
+    flashNote('Opened WhatsApp');
   }
 
   return (
@@ -133,18 +177,20 @@ export default function App() {
         <div className="composer">
           <div className="tabs" role="tablist">
             <button
+              type="button"
               role="tab"
               aria-selected={mode === 'url'}
               className={`tab ${mode === 'url' ? 'active' : ''}`}
-              onClick={() => setMode('url')}
+              onClick={() => setModeSafe('url')}
             >
               URL Mode
             </button>
             <button
+              type="button"
               role="tab"
               aria-selected={mode === 'paste'}
               className={`tab ${mode === 'paste' ? 'active' : ''}`}
-              onClick={() => setMode('paste')}
+              onClick={() => setModeSafe('paste')}
             >
               Paste Content
             </button>
@@ -152,31 +198,49 @@ export default function App() {
 
           {mode === 'url' ? (
             <section className="panel">
-              <label className="label">Paste an action page link</label>
+              <label className="label" htmlFor="input-url">
+                Paste an action page link
+              </label>
               <textarea
+                id="input-url"
                 className="textarea"
-                rows={4}
+                rows={3}
                 placeholder="https://actionnetwork.org/letters/..."
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => onInputChange(e.target.value)}
                 disabled={loading}
               />
               <p className="hint">
-                One link at a time. If a site blocks access, switch to the Paste tab.
+                One link at a time. If a site blocks access, switch to Paste.
               </p>
             </section>
           ) : (
             <section className="panel">
-              <label className="label">Paste the page content here</label>
+              <div className="label-row">
+                <label className="label" htmlFor="input-paste">
+                  Paste the page content here
+                </label>
+                <span
+                  className={`input-count ${pasteTooShort ? 'warn' : ''}`}
+                  aria-live="polite"
+                >
+                  {pasteLength} / {MIN_CONTENT} min
+                </span>
+              </div>
               <textarea
-                className="textarea"
+                id="input-paste"
+                className={`textarea ${pasteTooShort ? 'textarea-warn' : ''}`}
                 rows={10}
                 placeholder="Open the page in your browser, select all (Ctrl+A), copy, and paste here."
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => onInputChange(e.target.value)}
                 disabled={loading}
               />
-              <p className="hint">Use this when a site shows bot protection.</p>
+              <p className="hint">
+                {pasteTooShort
+                  ? TOO_SHORT
+                  : 'Use this when a site shows bot protection.'}
+              </p>
             </section>
           )}
 
@@ -188,30 +252,33 @@ export default function App() {
               value={footer}
               onChange={(e) => setFooter(e.target.value)}
               disabled={loading}
+              aria-label="Footer text appended to every message"
             />
             <p className="hint">Appended to every message. Saved in your browser.</p>
           </details>
 
           <div className="actions">
             <button
+              type="button"
               className="btn btn-primary"
               onClick={handleConvert}
-              disabled={loading || !input.trim()}
+              disabled={!canConvert}
             >
               {loading ? 'Converting…' : 'Convert'}
             </button>
             <button
+              type="button"
               className="btn btn-ghost"
               onClick={handleClear}
-              disabled={loading}
+              disabled={loading || (!input && !result && !error)}
             >
               Clear
             </button>
           </div>
 
           {error && (
-            <div className="alert alert-error">
-              <pre>{error}</pre>
+            <div className="alert alert-error" role="alert" ref={errorRef}>
+              <p>{error}</p>
             </div>
           )}
         </div>
@@ -236,20 +303,30 @@ export default function App() {
               <div className="export">
                 <p className="export-label">Copy + Export</p>
                 <div className="export-grid">
-                  <button className="btn btn-primary" onClick={handleCopy}>
+                  <button type="button" className="btn btn-primary" onClick={handleCopy}>
                     Copy formatted text
                   </button>
-                  <button className="btn btn-secondary" onClick={handleDownloadTxt}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={handleDownloadTxt}
+                  >
                     Download TXT
                   </button>
-                  <button className="btn btn-secondary" onClick={handleDownloadDoc}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={handleDownloadDoc}
+                  >
                     Download DOC
                   </button>
-                  <button className="btn btn-secondary" onClick={handleShare}>
+                  <button type="button" className="btn btn-secondary" onClick={handleShare}>
                     Share
                   </button>
                 </div>
-                {exportNote && <p className="export-note">{exportNote}</p>}
+                <p className="export-note" aria-live="polite">
+                  {exportNote || '\u00a0'}
+                </p>
               </div>
 
               <details className="raw">
@@ -258,7 +335,7 @@ export default function App() {
               </details>
             </section>
           ) : (
-            <EmptyState />
+            <EmptyState loading={loading} />
           )}
         </div>
       </div>
@@ -266,20 +343,30 @@ export default function App() {
   );
 }
 
-function EmptyState() {
+function EmptyState({ loading }) {
   return (
     <div className="empty">
-      <div className="phone phone-muted">
+      <div className={`phone phone-muted ${loading ? 'phone-loading' : ''}`}>
         <div className="phone-bar">WhatsApp</div>
         <div className="phone-body">
           <div className="bubble bubble-ghost">
-            <p>Your WhatsApp message will appear here.</p>
+            <p>
+              {loading
+                ? 'Writing your message…'
+                : 'Your WhatsApp message will appear here.'}
+            </p>
             <span className="bubble-time">now</span>
           </div>
         </div>
       </div>
       <p className="empty-hint">
-        Paste a link or text, then hit <strong>Convert</strong>.
+        {loading ? (
+          'Usually takes a few seconds.'
+        ) : (
+          <>
+            Paste a link or text, then hit <strong>Convert</strong>.
+          </>
+        )}
       </p>
     </div>
   );
@@ -294,13 +381,14 @@ function Bubble({ message }) {
           <FormattedLine text={line} />
         </p>
       ))}
-      <span className="bubble-time">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+      <span className="bubble-time">
+        {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+      </span>
     </div>
   );
 }
 
 function FormattedLine({ text }) {
-  // Render *bold* and _italic_ (WhatsApp style)
   const parts = parseInline(text);
   return parts.map((part, i) => {
     if (part.type === 'bold') return <strong key={i}>{part.value}</strong>;
@@ -337,7 +425,6 @@ function parseInline(text) {
       }
     }
     if (!matched) {
-      // take plain chars up to next special char
       const next = rest.slice(1).search(/[*_h]/);
       const take = next === -1 ? rest.length : next + 1;
       tokens.push({ type: 'text', value: rest.slice(0, take) });
