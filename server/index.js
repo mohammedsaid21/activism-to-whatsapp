@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildMessages } from './prompt.js';
+import { buildMessages, polishMessage } from './prompt.js';
 import { fetchUrl, FetchError } from './fetcher.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -151,7 +151,7 @@ async function generateMessage({ content, sourceUrl, footer }) {
     );
   }
 
-  return String(out).trim();
+  return polishMessage(String(out).trim(), { content, sourceUrl });
 }
 
 async function safeText(resp) {
