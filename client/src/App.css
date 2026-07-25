@@ -296,7 +296,11 @@ body {
 }
 
 .settings .footer-input {
-  margin: 14px 16px 16px;
+  margin: 14px 16px 0;
+}
+
+.settings .hint {
+  margin: 8px 16px 14px;
 }
 
 /* ---------- Actions ---------- */
