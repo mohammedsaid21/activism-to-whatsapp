@@ -10,8 +10,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const {
   ZAI_API_KEY,
-  ZAI_BASE_URL = 'https://api.z.ai/api/coding/paas/v4',
-  GLM_MODEL = 'glm-5.2',
+  ZAI_BASE_URL = 'https://genai.ghaymah.systems/v1',
+  GLM_MODEL = 'DeepSeek-V3-0324',
   FOOTER_TEXT,
   PORT = 3001,
 } = process.env;
@@ -108,9 +108,6 @@ async function generateMessage({ content, sourceUrl, footer }) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 90000);
 
-  // GLM-5.2 is a reasoning model. With thinking ON, it burns most of
-  // max_tokens on reasoning_content and often returns empty content.
-  // Disable thinking for this short formatting task.
   let resp;
   try {
     resp = await fetch(endpoint, {
@@ -124,20 +121,18 @@ async function generateMessage({ content, sourceUrl, footer }) {
         messages,
         temperature: 0.7,
         max_tokens: 2048,
-        thinking: { type: 'disabled' },
-        enable_thinking: false,
       }),
       signal: controller.signal,
     });
   } catch (err) {
     clearTimeout(timeout);
-    throw new Error(`GLM request failed: ${err.message}`);
+    throw new Error(`AI request failed: ${err.message}`);
   }
   clearTimeout(timeout);
 
   if (!resp.ok) {
     const detail = await safeText(resp);
-    throw new Error(`GLM ${resp.status}: ${detail.slice(0, 300)}`);
+    throw new Error(`AI ${resp.status}: ${detail.slice(0, 300)}`);
   }
 
   const data = await resp.json();
@@ -145,10 +140,7 @@ async function generateMessage({ content, sourceUrl, footer }) {
   const out = choice?.message?.content;
   if (!out || !String(out).trim()) {
     const finish = choice?.finish_reason || 'unknown';
-    const hadReasoning = Boolean(choice?.message?.reasoning_content);
-    throw new Error(
-      `GLM returned no content (finish_reason=${finish}, had_reasoning=${hadReasoning}).`
-    );
+    throw new Error(`AI returned no content (finish_reason=${finish}).`);
   }
 
   return polishMessage(String(out).trim(), { content, sourceUrl });

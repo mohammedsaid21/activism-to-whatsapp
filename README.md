@@ -16,7 +16,7 @@ npm run dev            # http://localhost:5173 (UI) + :3001 (API)
 
 ```
 Browser  →  Express (PORT)
-              ├── /api/*     → GLM-5.2 via z.ai
+              ├── /api/*     → DeepSeek-V3-0324 via Ghaymah
               └── /*         → client/dist (built React app)
 ```
 
@@ -41,8 +41,8 @@ From the project root:
 ```bash
 fly launch --no-deploy          # uses fly.toml already in the repo
 fly secrets set ZAI_API_KEY="your_key_here"
-fly secrets set ZAI_BASE_URL="https://api.z.ai/api/coding/paas/v4"
-fly secrets set GLM_MODEL="glm-5.2"
+fly secrets set ZAI_BASE_URL="https://genai.ghaymah.systems/v1"
+fly secrets set GLM_MODEL="DeepSeek-V3-0324"
 fly secrets set FOOTER_TEXT="Join AmpNet, a community fighting for truth & justice online: chat.whatsapp.com/JkcyqcS0DYFLutqL4nyb0V"
 fly deploy
 ```
@@ -63,9 +63,9 @@ Later updates: just `fly deploy` again after pushing code.
 
 | Variable       | Required | Description                          |
 | -------------- | -------- | ------------------------------------ |
-| `ZAI_API_KEY`  | yes      | z.ai API key                         |
-| `ZAI_BASE_URL` | no       | default `https://api.z.ai/api/coding/paas/v4` |
-| `GLM_MODEL`    | no       | default `glm-5.2`                    |
+| `ZAI_API_KEY`  | yes      | Ghaymah API key                      |
+| `ZAI_BASE_URL` | no       | default `https://genai.ghaymah.systems/v1` |
+| `GLM_MODEL`    | no       | default `DeepSeek-V3-0324`           |
 | `FOOTER_TEXT`  | no       | AmpNet footer line                   |
 | `PORT`         | no       | host sets this (Fly uses `8080`)     |
 | `NODE_ENV`     | no       | `production` in Docker image         |
@@ -73,7 +73,7 @@ Later updates: just `fly deploy` again after pushing code.
 ## Project layout
 
 ```
-server/          Express API + GLM + static file serving
+server/          Express API + AI + static file serving
 client/          Vite + React UI
 Dockerfile       Production image (front build + back)
 fly.toml         Fly.io config
