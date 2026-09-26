@@ -8,7 +8,7 @@ One Node process serves **both** the React frontend and the Express API.
 
 ```bash
 npm run install:all
-cp .env.example .env   # add your ZAI_API_KEY
+cp .env.example .env   # add your GEMINI_API_KEY (Google AI Studio)
 npm run dev            # http://localhost:5173 (UI) + :3001 (API)
 ```
 
@@ -16,7 +16,7 @@ npm run dev            # http://localhost:5173 (UI) + :3001 (API)
 
 ```
 Browser  →  Express (PORT)
-              ├── /api/*     → DeepSeek-V3-0324 via Ghaymah
+              ├── /api/*     → Gemini via Google AI API
               └── /*         → client/dist (built React app)
 ```
 
@@ -40,9 +40,9 @@ From the project root:
 
 ```bash
 fly launch --no-deploy          # uses fly.toml already in the repo
-fly secrets set ZAI_API_KEY="your_key_here"
-fly secrets set ZAI_BASE_URL="https://genai.ghaymah.systems/v1"
-fly secrets set GLM_MODEL="DeepSeek-V3-0324"
+fly secrets set GEMINI_API_KEY="your_key_here"
+fly secrets set GEMINI_BASE_URL="https://generativelanguage.googleapis.com/v1beta/openai"
+fly secrets set GEMINI_MODEL="gemini-3.8-flash"
 fly secrets set FOOTER_TEXT="Join AmpNet, a community fighting for truth & justice online: chat.whatsapp.com/JkcyqcS0DYFLutqL4nyb0V"
 fly deploy
 ```
@@ -56,16 +56,16 @@ Later updates: just `fly deploy` again after pushing code.
 1. [https://railway.app](https://railway.app) → **New Project** → **Deploy from GitHub**
 2. Select `activism-to-whatsapp`
 3. Railway detects the Dockerfile automatically
-4. Add variables: `ZAI_API_KEY`, `ZAI_BASE_URL`, `GLM_MODEL`, `NODE_ENV=production`
+4. Add variables: `GEMINI_API_KEY`, `GEMINI_BASE_URL`, `GEMINI_MODEL`, `NODE_ENV=production`
 5. Generate a public domain under **Settings → Networking**
 
 ## Config
 
 | Variable       | Required | Description                          |
 | -------------- | -------- | ------------------------------------ |
-| `ZAI_API_KEY`  | yes      | Ghaymah API key                      |
-| `ZAI_BASE_URL` | no       | default `https://genai.ghaymah.systems/v1` |
-| `GLM_MODEL`    | no       | default `DeepSeek-V3-0324`           |
+| `GEMINI_API_KEY`  | yes      | [Google AI Studio](https://aistudio.google.com/apikey) API key |
+| `GEMINI_BASE_URL` | no       | default `https://generativelanguage.googleapis.com/v1beta/openai` |
+| `GEMINI_MODEL`    | no       | default `gemini-3.8-flash`           |
 | `FOOTER_TEXT`  | no       | AmpNet footer line                   |
 | `PORT`         | no       | host sets this (Fly uses `8080`)     |
 | `NODE_ENV`     | no       | `production` in Docker image         |

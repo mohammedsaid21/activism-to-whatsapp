@@ -9,15 +9,15 @@ import { fetchUrl, FetchError } from './fetcher.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const {
-  ZAI_API_KEY,
-  ZAI_BASE_URL = 'https://genai.ghaymah.systems/v1',
-  GLM_MODEL = 'DeepSeek-V3-0324',
+  GEMINI_API_KEY,
+  GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai',
+  GEMINI_MODEL = 'gemini-3.8-flash',
   FOOTER_TEXT,
   PORT = 3001,
 } = process.env;
 
-if (!ZAI_API_KEY) {
-  console.warn('[warn] ZAI_API_KEY is not set. Add it to .env before testing.');
+if (!GEMINI_API_KEY) {
+  console.warn('[warn] GEMINI_API_KEY is not set. Add it to .env before testing.');
 }
 
 const app = express();
@@ -25,7 +25,7 @@ app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, model: GLM_MODEL, hasKey: Boolean(ZAI_API_KEY) });
+  res.json({ ok: true, model: GEMINI_MODEL, hasKey: Boolean(GEMINI_API_KEY) });
 });
 
 app.post('/api/convert', async (req, res) => {
@@ -89,7 +89,7 @@ app.post('/api/convert', async (req, res) => {
     const message = await generateMessage({ content, sourceUrl, footer });
     res.json({ message });
   } catch (err) {
-    console.error('[glm] generation failed:', err);
+    console.error('[gemini] generation failed:', err);
     res.status(502).json({
       error: 'The AI service failed to generate a message. Try again in a moment.',
       detail: err.message,
@@ -104,7 +104,7 @@ async function generateMessage({ content, sourceUrl, footer }) {
     footer: footer || FOOTER_TEXT,
   });
 
-  const endpoint = `${ZAI_BASE_URL.replace(/\/$/, '')}/chat/completions`;
+  const endpoint = `${GEMINI_BASE_URL.replace(/\/$/, '')}/chat/completions`;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 90000);
 
@@ -114,10 +114,10 @@ async function generateMessage({ content, sourceUrl, footer }) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${ZAI_API_KEY}`,
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: GLM_MODEL,
+        model: GEMINI_MODEL,
         messages,
         temperature: 0.7,
         max_tokens: 2048,
@@ -164,5 +164,5 @@ if (process.env.NODE_ENV === 'production') {
 
 app.listen(PORT, () => {
   console.log(`[server] listening on http://localhost:${PORT}`);
-  console.log(`[server] model=${GLM_MODEL} base=${ZAI_BASE_URL}`);
+  console.log(`[server] model=${GEMINI_MODEL} base=${GEMINI_BASE_URL}`);
 });
