@@ -14,40 +14,14 @@ function envString(name, fallback) {
   return String(raw).trim().replace(/^['"]|['"]$/g, '');
 }
 
-const GEMINI_API_KEY = envString('GEMINI_API_KEY');
-const GEMINI_BASE_URL = envString(
-  'GEMINI_BASE_URL',
-  'https://generativelanguage.googleapis.com/v1beta/openai',
-);
-const GEMINI_MODEL = envString('GEMINI_MODEL', 'gemini-3.7-flash');
-const GEMINI_MODEL_FALLBACKS = envString(
-  'GEMINI_MODEL_FALLBACKS',
-  'gemini-flash-latest,gemini-3.6-flash,gemini-3.1-flash-lite',
-)
-  .split(',')
-  .map((s) => s.trim())
-  .filter(Boolean);
+const GHAYMAH_API_KEY = envString('GHAYMAH_API_KEY');
+const GHAYMAH_BASE_URL = envString('GHAYMAH_BASE_URL', 'https://genai.ghaymah.systems/v1');
+const GHAYMAH_MODEL = envString('GHAYMAH_MODEL', 'GLM-5.3-Flash');
 const FOOTER_TEXT = envString('FOOTER_TEXT');
 const PORT = envString('PORT', '3001');
 
-function geminiModelsToTry() {
-  const seen = new Set();
-  const models = [];
-  for (const name of [GEMINI_MODEL, ...GEMINI_MODEL_FALLBACKS]) {
-    if (name && !seen.has(name)) {
-      seen.add(name);
-      models.push(name);
-    }
-  }
-  return models;
-}
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-if (!GEMINI_API_KEY) {
-  console.warn('[warn] GEMINI_API_KEY is not set. Add it to .env before testing.');
+if (!GHAYMAH_API_KEY) {
+  console.warn('[warn] GHAYMAH_API_KEY is not set. Add it to .env before testing.');
 }
 
 const app = express();
@@ -57,10 +31,10 @@ app.use(express.json({ limit: '1mb' }));
 app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
-    model: GEMINI_MODEL,
-    baseUrl: GEMINI_BASE_URL,
-    hasKey: Boolean(GEMINI_API_KEY),
-    keyLength: GEMINI_API_KEY ? GEMINI_API_KEY.length : 0,
+    model: GHAYMAH_MODEL,
+    baseUrl: GHAYMAH_BASE_URL,
+    hasKey: Boolean(GHAYMAH_API_KEY),
+    keyLength: GHAYMAH_API_KEY ? GHAYMAH_API_KEY.length : 0,
   });
 });
 
@@ -112,7 +86,6 @@ app.post('/api/convert', async (req, res) => {
     content = input.trim();
   }
 
-  // Skip AI when there's not enough substance to build an alert
   const substance = content.replace(/\s+/g, ' ').trim();
   if (substance.length < 50) {
     return res.status(400).json({
@@ -125,7 +98,7 @@ app.post('/api/convert', async (req, res) => {
     const message = await generateMessage({ content, sourceUrl, footer });
     res.json({ message });
   } catch (err) {
-    console.error('[gemini] generation failed:', err);
+    console.error('[ghaymah] generation failed:', err);
     res.status(502).json({
       error: 'The AI service failed to generate a message. Try again in a moment.',
       detail: err.message,
@@ -140,32 +113,12 @@ async function generateMessage({ content, sourceUrl, footer }) {
     footer: footer || FOOTER_TEXT,
   });
 
-  const models = geminiModelsToTry();
-  let lastError = new Error('AI request failed.');
-
-  for (const model of models) {
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const text = await requestGeminiCompletion(messages, model);
-        return polishMessage(text, { content, sourceUrl });
-      } catch (err) {
-        lastError = err;
-        const busy = err.status === 503 || err.status === 429;
-        if (busy && attempt < 2) {
-          await sleep(750 * (attempt + 1));
-          continue;
-        }
-        if (busy) break;
-        throw err;
-      }
-    }
-  }
-
-  throw lastError;
+  const text = await requestChatCompletion(messages);
+  return polishMessage(text, { content, sourceUrl });
 }
 
-async function requestGeminiCompletion(messages, model) {
-  const endpoint = `${GEMINI_BASE_URL.replace(/\/$/, '')}/chat/completions`;
+async function requestChatCompletion(messages) {
+  const endpoint = `${GHAYMAH_BASE_URL.replace(/\/$/, '')}/chat/completions`;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 90000);
 
@@ -175,10 +128,10 @@ async function requestGeminiCompletion(messages, model) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${GEMINI_API_KEY}`,
+        Authorization: `Bearer ${GHAYMAH_API_KEY}`,
       },
       body: JSON.stringify({
-        model,
+        model: GHAYMAH_MODEL,
         messages,
         temperature: 0.7,
         max_tokens: 2048,
@@ -193,9 +146,7 @@ async function requestGeminiCompletion(messages, model) {
 
   if (!resp.ok) {
     const detail = await safeText(resp);
-    const err = new Error(`AI ${resp.status}: ${detail.slice(0, 300)}`);
-    err.status = resp.status;
-    throw err;
+    throw new Error(`AI ${resp.status}: ${detail.slice(0, 300)}`);
   }
 
   const data = await resp.json();
@@ -227,5 +178,5 @@ if (process.env.NODE_ENV === 'production') {
 
 app.listen(PORT, () => {
   console.log(`[server] listening on http://localhost:${PORT}`);
-  console.log(`[server] model=${GEMINI_MODEL} base=${GEMINI_BASE_URL}`);
+  console.log(`[server] model=${GHAYMAH_MODEL} base=${GHAYMAH_BASE_URL}`);
 });

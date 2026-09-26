@@ -8,7 +8,7 @@ One Node process serves **both** the React frontend and the Express API.
 
 ```bash
 npm run install:all
-cp .env.example .env   # add your GEMINI_API_KEY (Google AI Studio)
+cp .env.example .env   # add your GHAYMAH_API_KEY
 npm run dev            # http://localhost:5173 (UI) + :3001 (API)
 ```
 
@@ -16,7 +16,7 @@ npm run dev            # http://localhost:5173 (UI) + :3001 (API)
 
 ```
 Browser  →  Express (PORT)
-              ├── /api/*     → Gemini via Google AI API
+              ├── /api/*     → Ghaymah GenAI (OpenAI-compatible)
               └── /*         → client/dist (built React app)
 ```
 
@@ -40,9 +40,9 @@ From the project root:
 
 ```bash
 fly launch --no-deploy          # uses fly.toml already in the repo
-fly secrets set GEMINI_API_KEY="your_key_here"
-fly secrets set GEMINI_BASE_URL="https://generativelanguage.googleapis.com/v1beta/openai"
-fly secrets set GEMINI_MODEL="gemini-3.8-flash"
+fly secrets set GHAYMAH_API_KEY="your_key_here"
+fly secrets set GHAYMAH_BASE_URL="https://genai.ghaymah.systems/v1"
+fly secrets set GHAYMAH_MODEL="GLM-5.3-Flash"
 fly secrets set FOOTER_TEXT="Join AmpNet, a community fighting for truth & justice online: chat.whatsapp.com/JkcyqcS0DYFLutqL4nyb0V"
 fly deploy
 ```
@@ -59,30 +59,30 @@ Later updates: just `fly deploy` again after pushing code.
 
    | Key | Value |
    | --- | --- |
-   | `GEMINI_API_KEY` | your key from [Google AI Studio](https://aistudio.google.com/apikey) |
-   | `GEMINI_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta/openai` |
-   | `GEMINI_MODEL` | `gemini-3.7-flash` (optional; server retries / falls back if busy) |
+   | `GHAYMAH_API_KEY` | your Ghaymah API key |
+   | `GHAYMAH_BASE_URL` | `https://genai.ghaymah.systems/v1` |
+   | `GHAYMAH_MODEL` | `GLM-5.3-Flash` |
    | `NODE_ENV` | `production` |
 
-4. **Save** → **Manual Deploy** (or wait for auto-deploy after push)
-5. Check `https://YOUR-SERVICE.onrender.com/api/health` — `hasKey` must be `true` and `keyLength` &gt; 0
+4. Remove old `GEMINI_*` variables if they are still set.
+5. **Save** → **Manual Deploy**
+6. Check `https://YOUR-SERVICE.onrender.com/api/health` — `hasKey` must be `true`
 
 ### Alternative: Railway (GitHub UI, no CLI)
 
 1. [https://railway.app](https://railway.app) → **New Project** → **Deploy from GitHub**
 2. Select `activism-to-whatsapp`
 3. Railway detects the Dockerfile automatically
-4. Add variables: `GEMINI_API_KEY`, `GEMINI_BASE_URL`, `GEMINI_MODEL`, `NODE_ENV=production`
+4. Add variables: `GHAYMAH_API_KEY`, `GHAYMAH_BASE_URL`, `GHAYMAH_MODEL`, `NODE_ENV=production`
 5. Generate a public domain under **Settings → Networking**
 
 ## Config
 
 | Variable       | Required | Description                          |
 | -------------- | -------- | ------------------------------------ |
-| `GEMINI_API_KEY`  | yes      | [Google AI Studio](https://aistudio.google.com/apikey) API key |
-| `GEMINI_BASE_URL` | no       | default `https://generativelanguage.googleapis.com/v1beta/openai` |
-| `GEMINI_MODEL`    | no       | default `gemini-3.7-flash`           |
-| `GEMINI_MODEL_FALLBACKS` | no | comma-separated backup models if the primary is busy |
+| `GHAYMAH_API_KEY`  | yes      | API key from [genai.ghaymah.systems](https://genai.ghaymah.systems) |
+| `GHAYMAH_BASE_URL` | no       | default `https://genai.ghaymah.systems/v1` |
+| `GHAYMAH_MODEL`    | no       | default `GLM-5.3-Flash` (e.g. `Kimi-K3`) |
 | `FOOTER_TEXT`  | no       | AmpNet footer line                   |
 | `PORT`         | no       | host sets this (Fly uses `8080`)     |
 | `NODE_ENV`     | no       | `production` in Docker image         |
