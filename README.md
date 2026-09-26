@@ -51,6 +51,22 @@ Your live URL will be: `https://activism-to-whatsapp.fly.dev`
 
 Later updates: just `fly deploy` again after pushing code.
 
+### Alternative: Render
+
+1. [https://render.com](https://render.com) → **New** → **Web Service** → connect this GitHub repo
+2. **Build command:** `npm run build` · **Start command:** `npm start`
+3. Under **Environment**, add (no quotes around the key value):
+
+   | Key | Value |
+   | --- | --- |
+   | `GEMINI_API_KEY` | your key from [Google AI Studio](https://aistudio.google.com/apikey) |
+   | `GEMINI_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta/openai` |
+   | `GEMINI_MODEL` | `gemini-3.8-flash` |
+   | `NODE_ENV` | `production` |
+
+4. **Save** → **Manual Deploy** (or wait for auto-deploy after push)
+5. Check `https://YOUR-SERVICE.onrender.com/api/health` — `hasKey` must be `true` and `keyLength` &gt; 0
+
 ### Alternative: Railway (GitHub UI, no CLI)
 
 1. [https://railway.app](https://railway.app) → **New Project** → **Deploy from GitHub**

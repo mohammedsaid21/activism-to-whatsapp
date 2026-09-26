@@ -8,13 +8,20 @@ import { fetchUrl, FetchError } from './fetcher.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const {
-  GEMINI_API_KEY,
-  GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai',
-  GEMINI_MODEL = 'gemini-3.8-flash',
-  FOOTER_TEXT,
-  PORT = 3001,
-} = process.env;
+function envString(name, fallback) {
+  const raw = process.env[name];
+  if (raw == null || raw === '') return fallback;
+  return String(raw).trim().replace(/^['"]|['"]$/g, '');
+}
+
+const GEMINI_API_KEY = envString('GEMINI_API_KEY');
+const GEMINI_BASE_URL = envString(
+  'GEMINI_BASE_URL',
+  'https://generativelanguage.googleapis.com/v1beta/openai',
+);
+const GEMINI_MODEL = envString('GEMINI_MODEL', 'gemini-3.8-flash');
+const FOOTER_TEXT = envString('FOOTER_TEXT');
+const PORT = envString('PORT', '3001');
 
 if (!GEMINI_API_KEY) {
   console.warn('[warn] GEMINI_API_KEY is not set. Add it to .env before testing.');
@@ -25,7 +32,13 @@ app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, model: GEMINI_MODEL, hasKey: Boolean(GEMINI_API_KEY) });
+  res.json({
+    ok: true,
+    model: GEMINI_MODEL,
+    baseUrl: GEMINI_BASE_URL,
+    hasKey: Boolean(GEMINI_API_KEY),
+    keyLength: GEMINI_API_KEY ? GEMINI_API_KEY.length : 0,
+  });
 });
 
 app.post('/api/convert', async (req, res) => {
