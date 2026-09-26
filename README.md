@@ -61,7 +61,7 @@ Later updates: just `fly deploy` again after pushing code.
    | --- | --- |
    | `GEMINI_API_KEY` | your key from [Google AI Studio](https://aistudio.google.com/apikey) |
    | `GEMINI_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta/openai` |
-   | `GEMINI_MODEL` | `gemini-3.8-flash` |
+   | `GEMINI_MODEL` | `gemini-3.7-flash` (optional; server retries / falls back if busy) |
    | `NODE_ENV` | `production` |
 
 4. **Save** → **Manual Deploy** (or wait for auto-deploy after push)
@@ -81,7 +81,8 @@ Later updates: just `fly deploy` again after pushing code.
 | -------------- | -------- | ------------------------------------ |
 | `GEMINI_API_KEY`  | yes      | [Google AI Studio](https://aistudio.google.com/apikey) API key |
 | `GEMINI_BASE_URL` | no       | default `https://generativelanguage.googleapis.com/v1beta/openai` |
-| `GEMINI_MODEL`    | no       | default `gemini-3.8-flash`           |
+| `GEMINI_MODEL`    | no       | default `gemini-3.7-flash`           |
+| `GEMINI_MODEL_FALLBACKS` | no | comma-separated backup models if the primary is busy |
 | `FOOTER_TEXT`  | no       | AmpNet footer line                   |
 | `PORT`         | no       | host sets this (Fly uses `8080`)     |
 | `NODE_ENV`     | no       | `production` in Docker image         |

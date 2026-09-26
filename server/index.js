@@ -19,9 +19,32 @@ const GEMINI_BASE_URL = envString(
   'GEMINI_BASE_URL',
   'https://generativelanguage.googleapis.com/v1beta/openai',
 );
-const GEMINI_MODEL = envString('GEMINI_MODEL', 'gemini-3.8-flash');
+const GEMINI_MODEL = envString('GEMINI_MODEL', 'gemini-3.7-flash');
+const GEMINI_MODEL_FALLBACKS = envString(
+  'GEMINI_MODEL_FALLBACKS',
+  'gemini-flash-latest,gemini-3.6-flash,gemini-3.1-flash-lite',
+)
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
 const FOOTER_TEXT = envString('FOOTER_TEXT');
 const PORT = envString('PORT', '3001');
+
+function geminiModelsToTry() {
+  const seen = new Set();
+  const models = [];
+  for (const name of [GEMINI_MODEL, ...GEMINI_MODEL_FALLBACKS]) {
+    if (name && !seen.has(name)) {
+      seen.add(name);
+      models.push(name);
+    }
+  }
+  return models;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 if (!GEMINI_API_KEY) {
   console.warn('[warn] GEMINI_API_KEY is not set. Add it to .env before testing.');
@@ -117,6 +140,31 @@ async function generateMessage({ content, sourceUrl, footer }) {
     footer: footer || FOOTER_TEXT,
   });
 
+  const models = geminiModelsToTry();
+  let lastError = new Error('AI request failed.');
+
+  for (const model of models) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const text = await requestGeminiCompletion(messages, model);
+        return polishMessage(text, { content, sourceUrl });
+      } catch (err) {
+        lastError = err;
+        const busy = err.status === 503 || err.status === 429;
+        if (busy && attempt < 2) {
+          await sleep(750 * (attempt + 1));
+          continue;
+        }
+        if (busy) break;
+        throw err;
+      }
+    }
+  }
+
+  throw lastError;
+}
+
+async function requestGeminiCompletion(messages, model) {
   const endpoint = `${GEMINI_BASE_URL.replace(/\/$/, '')}/chat/completions`;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 90000);
@@ -130,7 +178,7 @@ async function generateMessage({ content, sourceUrl, footer }) {
         Authorization: `Bearer ${GEMINI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: GEMINI_MODEL,
+        model,
         messages,
         temperature: 0.7,
         max_tokens: 2048,
@@ -145,7 +193,9 @@ async function generateMessage({ content, sourceUrl, footer }) {
 
   if (!resp.ok) {
     const detail = await safeText(resp);
-    throw new Error(`AI ${resp.status}: ${detail.slice(0, 300)}`);
+    const err = new Error(`AI ${resp.status}: ${detail.slice(0, 300)}`);
+    err.status = resp.status;
+    throw err;
   }
 
   const data = await resp.json();
@@ -156,7 +206,7 @@ async function generateMessage({ content, sourceUrl, footer }) {
     throw new Error(`AI returned no content (finish_reason=${finish}).`);
   }
 
-  return polishMessage(String(out).trim(), { content, sourceUrl });
+  return String(out).trim();
 }
 
 async function safeText(resp) {
